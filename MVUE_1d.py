@@ -94,7 +94,8 @@ def binning(GT, binningSize, exposureTime=1):
     return scipy.signal.convolve(GT,np.ones((binningSize, 1)),mode='valid')[::binningSize, :]*exposureTime
 
 def addNoise(binnedGT, readNoiseSD):
-    return np.random.poisson(binnedGT) + np.random.normal(loc = 0, scale=readNoiseSD, size=binnedGT.shape)
+    # assert np.min(binnedGT)>0;
+    return np.random.poisson(np.abs(binnedGT)) + np.random.normal(loc = 0, scale=readNoiseSD, size=binnedGT.shape)
 
 def findMVUE(fileName, targetBox=[1,1,1,1], lengthOfChip=4, logBinUpTo=None):
 
@@ -203,6 +204,24 @@ def loadBoxes(boxes, fileLocation):
     dataDict={};
     for box in boxes:
         fileName=str(box).replace('1',' 1').replace('0',' 0');
+        fullFileName=os.path.join(fileLocation, fileName);
+        with open(fullFileName,'rb') as file:
+            tempPickle = (pickle.load(file));
+            varianceArray=tempPickle['varianceArray'];
+            tempDict={'matrixFunc': (sp.lambdify(varianceArray, tempPickle['finalSolveWeightCoeffMatrixSympy'],[{'ImmutableMatrix':numpy.matrix},"numpy"])),
+                     'COTR': (sp.lambdify(varianceArray, tempPickle['constantOnTheRight'],[{'ImmutableMatrix':numpy.matrix},"numpy"])),
+                     'estimatorArray': np.asarray(tempPickle['estimatorList']),
+                     'varianceArray':varianceArray};
+        # Use tuple version of the ndarray as key
+        dataDict[tuple(box.tolist())]=tempDict;
+    # print(time.time()-t)
+    return dataDict
+
+def newLoadBoxes(boxes, fileLocation):
+	# t=time.time();
+    dataDict={};
+    for box in boxes:
+        fileName=str(box).replace('\n','_');
         fullFileName=os.path.join(fileLocation, fileName);
         with open(fullFileName,'rb') as file:
             tempPickle = (pickle.load(file));
