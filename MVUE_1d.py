@@ -217,6 +217,23 @@ def loadBoxes(boxes, fileLocation):
     # print(time.time()-t)
     return dataDict
 
+def newLoadBoxes_ExactPath(box, fileLocation):
+    # t=time.time();
+    dataDict={};
+    
+    fullFileName=fileLocation
+    with open(fullFileName,'rb') as file:
+        tempPickle = (pickle.load(file));
+        varianceArray=tempPickle['varianceArray'];
+        tempDict={'matrixFunc': (sp.lambdify(varianceArray, tempPickle['finalSolveWeightCoeffMatrixSympy'],[{'ImmutableMatrix':numpy.matrix},"numpy"])),
+                 'COTR': (sp.lambdify(varianceArray, tempPickle['constantOnTheRight'],[{'ImmutableMatrix':numpy.matrix},"numpy"])),
+                 'estimatorArray': np.asarray(tempPickle['estimatorList']),
+                 'varianceArray':varianceArray};
+    # Use tuple version of the ndarray as key
+    dataDict[tuple(box.tolist())]=tempDict;
+    # print(time.time()-t)
+    return dataDict
+
 def newLoadBoxes(boxes, fileLocation):
 	# t=time.time();
     dataDict={};
@@ -254,6 +271,8 @@ def estimateVariance(dyadicData, lengthOfChip, logBinUpTo, binningList, exposure
     assert len(binningList) == len(exposureTimeList);
     assert logBinUpTo + 1 == len(binningList);
     count=0;
+    # added new line, to turn negative numbers into zeros.
+    dyadicData = (abs(dyadicData) + dyadicData) / 2;
     for logIndex in range(logBinUpTo+1):
         newCount=count+lengthOfChip//(2**logIndex);
         varianceEstimate_ET[count:newCount,:] = (dyadicData[count:newCount,:] / exposureTimeList[logIndex] + 
